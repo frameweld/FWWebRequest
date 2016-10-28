@@ -20,7 +20,7 @@ Imports System.Net
 ''' <author>Omar D. Ellis, MISM</author>
 ''' <date>10/28/2016 10:00 AM </date>
 ''' <summary>
-''' WebRequest Class for sending GET/POST requests. POST requests can be sent with parameters and files in a single request.
+''' WebRequest Class for sending GET/POST requests. POST requests can be sent with parameters and files attached within a single request.
 ''' </summary>
 Public Class FWWebRequest
     ''' <summary>
@@ -157,6 +157,9 @@ Public Class FWWebRequest
     ''' Send current request.
     ''' </summary>
     Public Sub Send()
+        ' Make sure there isn't any data in the content body.
+        sbContentBody.Clear()
+
         ' Bytes stored in content body of a POST request only.
         Dim contentBodyBytes() As Byte
         Dim wr As HttpWebRequest = DirectCast(WebRequest.Create(strUri), HttpWebRequest)
