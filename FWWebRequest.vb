@@ -2,6 +2,9 @@
 Imports System.IO
 Imports System.Text
 Imports System.Net
+Imports System.Security
+Imports System.Net.Security
+
 ''' <copyright file="FWWebrequest.vb" company="Frameweld">
 ''' Copyright (c) 2016 All Rights Reserved
 ''' </copyright>
@@ -48,6 +51,18 @@ Public Class FWWebRequest
     ''' </summary>
     Protected strAccept As String = "application/json"
     ''' <summary>
+    ''' The amount of time before a request times out. Default is 20 minutes.
+    ''' </summary>
+    Protected intTimeout As Integer = (60000 * 20)
+    ''' <summary>
+    ''' The chunk size for sending files. Default is 4 KB
+    ''' </summary>
+    Protected intChunkSize As Integer = 4096
+    ''' <summary>
+    ''' The security protocol being used to send requests. Default is SSL13
+    ''' </summary>
+    Protected spSecurityProtocol As SecurityProtocolType = SecurityProtocolType.Ssl3
+    ''' <summary>
     ''' Used to set extra headers
     ''' </summary>
     Protected nvcHeaders As New NameValueCollection
@@ -59,7 +74,9 @@ Public Class FWWebRequest
     ''' Used to store files for POST request only.
     ''' </summary>
     Protected nvcFiles As New NameValueCollection
-    ''' <summary>Response from remote server.</summary>
+    ''' <summary>
+    ''' Response from remote server.
+    ''' </summary>
     Protected strResponse As String = vbNull
     ''' <summary>
     ''' Class constructor with a Uri provided.
@@ -102,6 +119,27 @@ Public Class FWWebRequest
         End If
 
         strMethod = method.ToUpper()
+    End Sub
+    ''' <summary>
+    ''' Set the request timeout.
+    ''' </summary>
+    ''' <param name="timeout">The amount of time to wait before ending a request.</param>
+    Public Sub SetTimeout(ByVal timeout As Integer)
+        intTimeout = timeout
+    End Sub
+    ''' <summary>
+    ''' The chunk size used when uploading a file. 
+    ''' </summary>
+    ''' <param name="chunkSize">The chunk size to use.</param>
+    Public Sub SetChunkSize(ByVal chunkSize As Integer)
+        intChunkSize = chunkSize
+    End Sub
+    ''' <summary>
+    ''' Set security protocol for requests.
+    ''' </summary>
+    ''' <param name="protocol">Security protocol to use for requests.</param>
+    Public Sub SetSecurityProtocol(ByVal protocol As SecurityProtocolType)
+        spSecurityProtocol = protocol
     End Sub
     ''' <summary>
     ''' Get response from server.
@@ -160,6 +198,9 @@ Public Class FWWebRequest
         ' Make sure there isn't any data in the content body.
         sbContentBody.Clear()
 
+        ' Frameweld uses Tls for HTTPS requests.
+        ServicePointManager.SecurityProtocol = spSecurityProtocol
+
         ' Bytes stored in content body of a POST request only.
         Dim contentBodyBytes() As Byte
         Dim wr As HttpWebRequest = DirectCast(WebRequest.Create(strUri), HttpWebRequest)
@@ -168,8 +209,7 @@ Public Class FWWebRequest
         wr.Method = strMethod
         wr.KeepAlive = True
         wr.ProtocolVersion = HttpVersion.Version11
-        ' Frameweld uses Tls for HTTPS requests.
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12
+        wr.Timeout = intTimeout
 
         If Not IsNothing(nvcHeaders) Then
             For Each key In nvcHeaders.Keys
@@ -214,22 +254,15 @@ Public Class FWWebRequest
                             rs.Write(contentBodyBytes, 0, contentBodyBytes.Length)
 
                             Using fileStream As FileStream = New FileStream(nvcFiles(filePath), FileMode.Open, FileAccess.Read)
-                                Dim buffer(fileStream.Length - 1) As Byte
-                                Dim numBytesToRead As Integer = fileStream.Length
-                                Dim numBytesRead As Integer = 0
+                                Dim bufferLength As Integer = intChunkSize
+                                Dim buffer(bufferLength - 1) As Byte
+                                Dim contentLen As Integer = fileStream.Read(buffer, 0, bufferLength)
 
-                                While (numBytesToRead > 0)
-                                    'Read may return anything from 0 to numBytesToRead.
-                                    Dim n As Integer = fileStream.Read(buffer, numBytesRead, numBytesToRead)
-                                    'Break when the end of the file is reached.
-                                    If (n = 0) Then
-                                        Exit While
-                                    End If
-                                    numBytesRead = (numBytesRead + n)
-                                    numBytesToRead = (numBytesToRead - n)
-                                End While
+                                Do While contentLen <> 0
+                                    rs.Write(buffer, 0, contentLen)
+                                    contentLen = fileStream.Read(buffer, 0, bufferLength)
+                                Loop
 
-                                rs.Write(buffer, 0, buffer.Length)
                                 fileStream.Close()
                             End Using
                         Next
