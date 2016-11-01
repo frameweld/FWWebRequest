@@ -265,16 +265,23 @@ Public Class FWWebRequest
 
                                 fileStream.Close()
                             End Using
+
+                            sbContentBody.Clear()
+                            sbContentBody.AppendLine()
+
+                            contentBodyBytes = Encoding.ASCII.GetBytes(sbContentBody.ToString())
+                            rs.Write(contentBodyBytes, 0, contentBodyBytes.Length)
                         Next
                     End If
 
-                    ' Write closing boundary to content body
+                    ' Write ending boundary
                     sbContentBody.Clear()
                     sbContentBody.AppendLine()
                     sbContentBody.Append(strEndingBoundary)
                     contentBodyBytes = Encoding.ASCII.GetBytes(sbContentBody.ToString())
 
                     rs.Write(contentBodyBytes, 0, contentBodyBytes.Length)
+
                     rs.Close()
 
                     nvcHeaders = Nothing
