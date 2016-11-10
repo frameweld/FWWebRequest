@@ -79,6 +79,10 @@ Public Class FWWebRequest
     ''' </summary>
     Protected strResponse As String = vbNull
     ''' <summary>
+    ''' Proxy Uri
+    ''' </summary>
+    Protected strProxyUri As Uri = Nothing
+    ''' <summary>
     ''' Class constructor with a Uri provided.
     ''' </summary>
     ''' <param name="uri">Uri used for the request.</param>
@@ -106,6 +110,13 @@ Public Class FWWebRequest
     ''' <param name="uri">Uri used for the request.</param>
     Public Sub SetUri(ByVal uri As String)
         strUri = New Uri(uri)
+    End Sub
+    ''' <summary>
+    ''' Set proxy URI for request.
+    ''' </summary>
+    ''' <param name="uri">Proxy uri used for the request.</param>
+    Public Sub SetProxyUri(ByVal uri As String)
+        strProxyUri = New Uri(uri)
     End Sub
     ''' <summary>
     ''' Set the method to use for request. This class only supports GET and POST request.
@@ -211,6 +222,12 @@ Public Class FWWebRequest
         wr.ProtocolVersion = HttpVersion.Version11
         wr.Timeout = intTimeout
 
+        ' Add proxy to the request.
+        ' TODO: Allow settings to be passed for proxy requests.
+        If Not IsNothing(strProxyUri) Then
+            wr.Proxy = New WebProxy(strProxyUri)
+        End If
+
         If Not IsNothing(nvcHeaders) Then
             For Each key In nvcHeaders.Keys
                 wr.Headers.Add(key, nvcHeaders(key))
@@ -287,6 +304,8 @@ Public Class FWWebRequest
                     nvcHeaders = Nothing
                     nvcFiles = Nothing
                     nvcParams = Nothing
+                    strProxyUri = Nothing
+                    strUri = Nothing
                 End Using
         End Select
 
